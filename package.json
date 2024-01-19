@@ -1,0 +1,12 @@
+{
+  "name": "3dtiles-polygon-crop",
+  "version": "0.0.1",
+  "description": "Cesium 3D Tiles polygon cutting",
+  "main": "index.js",
+  "keywords": [],
+  "author": "Rofix",
+  "license": "MIT",
+  "dependencies": {
+    "cesium": "^1.113.0"
+  }
+}
