@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3dtiles-polygon-crop</title>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.113/Build/Cesium/Cesium.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cesium.com/downloads/cesiumjs/releases/1.113/Build/Cesium/Widgets/widgets.css"
+    />
+    <style>
+      body {
+        margin: 0;
+      }
+
+      #cesiumContainer {
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="cesiumContainer"></div>
+
+    <script type="module">
+      import { tileSetClipByPolygon } from "./index.js";
+      import { PolylineDrawer } from "./polyLineDrawer.js";
+
+      let coordinates = [];
+      Cesium.Ion.defaultAccessToken =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkNzEwOTRhMi05YmYyLTQyY2EtYTU2My04YTM1MWE2YjhjNjAiLCJpZCI6MjU5LCJpYXQiOjE3MDQyMTcxMzh9.rE7KTaFyZydhuP1Z7ohzClO3J1tMOvaHODzt3_5jo7s";
+
+      const viewer = new Cesium.Viewer("cesiumContainer", {
+        terrain: Cesium.Terrain.fromWorldTerrain(),
+      });
+
+      const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(40866);
+      viewer.scene.primitives.add(tileset);
+      viewer.zoomTo(tileset);
+
+      const polylineDrawer = new PolylineDrawer(viewer, (lineList) => {
+        lineList.forEach((element) => {
+          const { x, y } = element;
+
+          coordinates.push([x, y]);
+        });
+        console.log(coordinates);
+        const CeiumPolygonClipA = new tileSetClipByPolygon({
+          tileSet: tileset,
+          unionClippingRegions: false,
+          originPositions: coordinates,
+        });
+
+        CeiumPolygonClipA.clippingByPositions();
+      });
+
+      polylineDrawer.start();
+    </script>
+  </body>
+</html>
