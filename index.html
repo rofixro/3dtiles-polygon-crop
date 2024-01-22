@@ -24,37 +24,151 @@
 
     <script type="module">
       import { tileSetClipByPolygon } from "./index.js";
-      import { PolylineDrawer } from "./polyLineDrawer.js";
 
-      let coordinates = [];
       Cesium.Ion.defaultAccessToken =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkNzEwOTRhMi05YmYyLTQyY2EtYTU2My04YTM1MWE2YjhjNjAiLCJpZCI6MjU5LCJpYXQiOjE3MDQyMTcxMzh9.rE7KTaFyZydhuP1Z7ohzClO3J1tMOvaHODzt3_5jo7s";
 
+      // terminateShape();
+      // // // 判断点击位置是否是 3dtiles
+      // // handler.setInputAction((movement) => {
+      // //   const pickedPrimitive = viewer.scene.pick(movement.position);
+      // //   if (pickedPrimitive && pickedPrimitive.primitive instanceof Cesium.Cesium3DTileset) {
+      // //     // 点击在3D Tiles上
+      // //     // 将笛卡尔坐标转换为经纬度
+      // //     // const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+      // //     // const longitude = Cesium.Math.toDegrees(cartographic.longitude);
+      // //     // const latitude = Cesium.Math.toDegrees(cartographic.latitude);
+      // //     // const height = cartographic.height;
+      // //   } else {
+      // //     // 点击不在3D Tiles上
+      // //     console.log("点击不在3D Tiles上");
+      // //   }
+      // // }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+      // // const coordinates = [
+      // //   [113.93837841091482, 22.516703589544022],
+      // //   [113.93915103648364, 22.516509383205534],
+      // //   [113.93869986516522, 22.516309465146158]
+      // // ];
+
+      // // const CeiumPolygonClipA = new tileSetClipByPolygon({
+      // //   tileSet: tileset,
+      // //   originPositions: coordinates,
+      // //   unionClippingRegions: false,
+      // // });
+
+      // // CeiumPolygonClipA.clippingByPositions();
       const viewer = new Cesium.Viewer("cesiumContainer", {
+        infoBox: false,
+        selectionIndicator: false,
         terrain: Cesium.Terrain.fromWorldTerrain(),
       });
+      const tileset = await Cesium.Cesium3DTileset.fromUrl(
+        "https://jdvop.oss-cn-qingdao.aliyuncs.com/mapv-data/titleset/sz_ns2/tileset.json"
+      );
 
-      const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(40866);
       viewer.scene.primitives.add(tileset);
       viewer.zoomTo(tileset);
 
-      const polylineDrawer = new PolylineDrawer(viewer, (lineList) => {
-        lineList.forEach((element) => {
-          const { x, y } = element;
-
-          coordinates.push([x, y]);
+      viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+      function createPoint(worldPosition) {
+        const point = viewer.entities.add({
+          position: worldPosition,
+          point: {
+            pixelSize: 5,
+            color: Cesium.Color.WHITE,
+            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          },
         });
-        console.log(coordinates);
-        const CeiumPolygonClipA = new tileSetClipByPolygon({
-          tileSet: tileset,
-          unionClippingRegions: false,
-          originPositions: coordinates,
-        });
+        return point;
+      }
+      let drawingMode = "line";
+      function drawShape(positionData) {
+        let shape;
+        if (drawingMode === "line") {
+          shape = viewer.entities.add({
+            polyline: {
+              positions: positionData,
+              clampToGround: true,
+              width: 3,
+            },
+          });
+        } else if (drawingMode === "polygon") {
+          shape = viewer.entities.add({
+            polygon: {
+              hierarchy: positionData,
+              material: new Cesium.ColorMaterialProperty(Cesium.Color.WHITE.withAlpha(0.7)),
+            },
+          });
+        }
+        return shape;
+      }
+      let activeShapePoints = [];
+      let activeShape;
+      let floatingPoint;
+      const points = [];
+      const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
 
-        CeiumPolygonClipA.clippingByPositions();
+      const CeiumPolygonClipA = new tileSetClipByPolygon({
+        tileSet: tileset,
+        unionClippingRegions: false,
       });
 
-      polylineDrawer.start();
+      handler.setInputAction((event) => {
+        const ray = viewer.camera.getPickRay(event.position);
+        const earthPosition = viewer.scene.globe.pick(ray, viewer.scene);
+
+        if (Cesium.defined(earthPosition)) {
+          if (activeShapePoints.length === 0) {
+            floatingPoint = createPoint(earthPosition);
+            activeShapePoints.push(earthPosition);
+            const dynamicPositions = new Cesium.CallbackProperty(function () {
+              if (drawingMode === "polygon") {
+                return new Cesium.PolygonHierarchy(activeShapePoints);
+              }
+              return activeShapePoints;
+            }, false);
+            activeShape = drawShape(dynamicPositions);
+          }
+          activeShapePoints.push(earthPosition);
+          createPoint(earthPosition);
+        }
+        // 将笛卡尔坐标转换为经纬度;
+        const position = viewer.camera.pickEllipsoid(event.position);
+        const cartographic = Cesium.Cartographic.fromCartesian(position);
+        const longitude = Cesium.Math.toDegrees(cartographic.longitude);
+        const latitude = Cesium.Math.toDegrees(cartographic.latitude);
+
+        points.push([longitude, latitude]);
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+      handler.setInputAction((event) => {
+        if (Cesium.defined(floatingPoint)) {
+          const ray = viewer.camera.getPickRay(event.endPosition);
+          const newPosition = viewer.scene.globe.pick(ray, viewer.scene);
+          if (Cesium.defined(newPosition)) {
+            floatingPoint.position.setValue(newPosition);
+            activeShapePoints.pop();
+            activeShapePoints.push(newPosition);
+          }
+        }
+      }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+      // Redraw the shape so it's not dynamic and remove the dynamic shape.
+      function terminateShape() {
+        activeShapePoints.pop();
+        drawShape(activeShapePoints);
+        viewer.entities.remove(floatingPoint);
+        viewer.entities.remove(activeShape);
+        floatingPoint = undefined;
+        activeShape = undefined;
+        activeShapePoints = [];
+      }
+
+      handler.setInputAction((event) => {
+        terminateShape();
+
+        CeiumPolygonClipA.clippingByPositions(points);
+      }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
     </script>
   </body>
 </html>
