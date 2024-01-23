@@ -28,49 +28,24 @@
       Cesium.Ion.defaultAccessToken =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkNzEwOTRhMi05YmYyLTQyY2EtYTU2My04YTM1MWE2YjhjNjAiLCJpZCI6MjU5LCJpYXQiOjE3MDQyMTcxMzh9.rE7KTaFyZydhuP1Z7ohzClO3J1tMOvaHODzt3_5jo7s";
 
-      // terminateShape();
-      // // // 判断点击位置是否是 3dtiles
-      // // handler.setInputAction((movement) => {
-      // //   const pickedPrimitive = viewer.scene.pick(movement.position);
-      // //   if (pickedPrimitive && pickedPrimitive.primitive instanceof Cesium.Cesium3DTileset) {
-      // //     // 点击在3D Tiles上
-      // //     // 将笛卡尔坐标转换为经纬度
-      // //     // const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-      // //     // const longitude = Cesium.Math.toDegrees(cartographic.longitude);
-      // //     // const latitude = Cesium.Math.toDegrees(cartographic.latitude);
-      // //     // const height = cartographic.height;
-      // //   } else {
-      // //     // 点击不在3D Tiles上
-      // //     console.log("点击不在3D Tiles上");
-      // //   }
-      // // }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-      // // const coordinates = [
-      // //   [113.93837841091482, 22.516703589544022],
-      // //   [113.93915103648364, 22.516509383205534],
-      // //   [113.93869986516522, 22.516309465146158]
-      // // ];
-
-      // // const CeiumPolygonClipA = new tileSetClipByPolygon({
-      // //   tileSet: tileset,
-      // //   originPositions: coordinates,
-      // //   unionClippingRegions: false,
-      // // });
-
-      // // CeiumPolygonClipA.clippingByPositions();
+      let points = [];
+      let activeShape;
+      let floatingPoint;
+      let drawingMode = "line";
+      let activeShapePoints = [];
       const viewer = new Cesium.Viewer("cesiumContainer", {
         infoBox: false,
         selectionIndicator: false,
         terrain: Cesium.Terrain.fromWorldTerrain(),
       });
       const tileset = await Cesium.Cesium3DTileset.fromUrl(
-        "https://jdvop.oss-cn-qingdao.aliyuncs.com/mapv-data/titleset/sz_ns2/tileset.json"
+        "http://lab.earthsdk.com/model/66327820ce5f11eab7a4adf1d6568ff7/tileset.json"
       );
-
+      // 贴地(设置模型高度)
+      const translation = Cesium.Cartesian3.fromArray([0, 0, -50]);
+      tileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
       viewer.scene.primitives.add(tileset);
       viewer.zoomTo(tileset);
-
-      viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
       function createPoint(worldPosition) {
         const point = viewer.entities.add({
           position: worldPosition,
@@ -82,7 +57,7 @@
         });
         return point;
       }
-      let drawingMode = "line";
+
       function drawShape(positionData) {
         let shape;
         if (drawingMode === "line") {
@@ -103,16 +78,18 @@
         }
         return shape;
       }
-      let activeShapePoints = [];
-      let activeShape;
-      let floatingPoint;
-      const points = [];
+
       const handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
 
-      const CeiumPolygonClipA = new tileSetClipByPolygon({
-        tileSet: tileset,
-        unionClippingRegions: false,
-      });
+      function terminateShape() {
+        activeShapePoints.pop();
+        drawShape(activeShapePoints);
+        viewer.entities.remove(floatingPoint);
+        viewer.entities.remove(activeShape);
+        floatingPoint = undefined;
+        activeShape = undefined;
+        activeShapePoints = [];
+      }
 
       handler.setInputAction((event) => {
         const ray = viewer.camera.getPickRay(event.position);
@@ -153,21 +130,18 @@
           }
         }
       }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
-      // Redraw the shape so it's not dynamic and remove the dynamic shape.
-      function terminateShape() {
-        activeShapePoints.pop();
-        drawShape(activeShapePoints);
-        viewer.entities.remove(floatingPoint);
-        viewer.entities.remove(activeShape);
-        floatingPoint = undefined;
-        activeShape = undefined;
-        activeShapePoints = [];
-      }
 
       handler.setInputAction((event) => {
         terminateShape();
+        const CeiumPolygonClipA = new tileSetClipByPolygon({
+          tileSet: tileset,
+          originPositions: points,
+          unionClippingRegions: false,
+        });
 
-        CeiumPolygonClipA.clippingByPositions(points);
+        CeiumPolygonClipA.clippingByPositions();
+        points = [];
+        viewer.entities.removeAll();
       }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
     </script>
   </body>
