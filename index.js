@@ -30,9 +30,9 @@ export class tileSetClipByPolygon {
     const clippingPlanes = [];
     const Cartesian3 = Cesium.Cartesian3;
     const pointsLength = this.originPositions.length;
+    const inverseTransform = this.getInverseTransform();
     const clockwise = this.isClockwise(this.originPositions);
     const positions = clockwise ? this.originPositions.reverse() : this.originPositions;
-    const inverseTransform = this.getInverseTransform();
 
     for (let i = 0; i < pointsLength; ++i) {
       const nextIndex = (i + 1) % pointsLength;
