@@ -1,5 +1,7 @@
 # 3dtiles-polygon-crop
 
+![](example.gif)
+
 ## Install
 
 ```javascript
