@@ -2,6 +2,8 @@
 
 ![](example.gif)
 
+Limited by Cesium API, currently only single area cropping can be provided. For details, see CesiumGS/cesium#8751
+
 ## Install
 
 ```javascript
