@@ -2,7 +2,9 @@
 
 ![](example.gif)
 
-Limited by Cesium API, currently only single area cropping can be provided. For details, see CesiumGS/cesium#8751
+~~Limited by Cesium API, currently only single area cropping can be provided. For details, see CesiumGS/cesium#8751~~
+
+Cesium version 1.117 add ClippingPolygonCollection API to support polygon clipping. This project is archived
 
 ## Install
 
